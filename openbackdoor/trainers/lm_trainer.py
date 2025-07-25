@@ -71,7 +71,6 @@ class LMTrainer(Trainer):
 
         self.accelerator.print(f"DEBUG: Before prepare, model to prepare is: {type(llm_to_prepare)}")
         
-        # 使用 self.optimizer 和 self.scheduler 进行 prepare
         prepared_llm, self.optimizer, train_dataloader, self.scheduler = self.accelerator.prepare(
             llm_to_prepare, self.optimizer, train_dataloader, self.scheduler
         )
@@ -113,14 +112,11 @@ class LMTrainer(Trainer):
         if self.accelerator.is_local_main_process:
             logger.info("Training finished.")
         
-        # 加载模型状态的操作也应在 unwrapped model 上进行
         state_dict = torch.load(self.model_checkpoint(self.ckpt), map_location='cpu')
         unwrapped_model = self.accelerator.unwrap_model(model.llm)
         unwrapped_model.load_state_dict(state_dict)
         return model
 
-
-    # 修正 train_one_epoch 方法 (与上一版相同，确保所有 self.model 都已改为 model)
     def train_one_epoch(self, epoch, epoch_iterator, model):
         model.train()
         total_loss = 0
@@ -142,7 +138,6 @@ class LMTrainer(Trainer):
                 
                 self.accelerator.backward(loss)
                 
-                # 关键修正 (2): 现在 self.optimizer 和 self.scheduler 是存在的
                 self.optimizer.step()
                 self.scheduler.step()
                 self.optimizer.zero_grad()
@@ -151,16 +146,12 @@ class LMTrainer(Trainer):
             progress_bar.set_postfix({"loss": total_loss / (step + 1)})
 
         avg_loss = total_loss / len(epoch_iterator)
-        # 使用 accelerator.gather 来同步所有进程的 avg_loss
         avg_loss_tensor = torch.tensor(avg_loss, device=self.accelerator.device)
         gathered_loss = self.accelerator.gather(avg_loss_tensor)
         avg_loss_all_processes = torch.mean(gathered_loss).item()
         return avg_loss_all_processes, 0, 0
 
     def evaluate(self, model: Victim, eval_dataloader: Dict, metrics: List[str]):
-        """
-        使用Accuracy作为指标，并与accelerate完全集成的评估函数。
-        """
         if not hasattr(self, 'accelerator') or self.accelerator is None:
             raise RuntimeError("Accelerator not set. Please call set_accelerator before training/evaluation.")
 
@@ -169,7 +160,7 @@ class LMTrainer(Trainer):
         all_labels_dict = {key: [] for key in eval_dataloader.keys()}
         results = {}
         dev_scores = []
-        main_metric = metrics[0] if metrics else "accuracy" # 默认为accuracy
+        main_metric = metrics[0] if metrics else "accuracy" 
 
         for key, dataloader in eval_dataloader.items():
             prepared_dataloader = self.accelerator.prepare(dataloader)
