@@ -6,7 +6,7 @@ data/
 datasets/
 detection_cache/
 lievan/
-models
+models/
 poison_data/
 victim_models/
 visual_results/
