@@ -37,10 +37,6 @@ class ClusterDefender(Defender):
         clean_data: List, 
         poison_data: List
     ):
-        # clean data包含train、eval和test三个干净数据
-        # poison data为test clean和poison的结合
-        # 提取受害者模型的隐藏层特征，进行聚类
-        # 聚类密度更高的簇可能是中毒数据
         num_classes = len(set([d[1] for d in poison_data]))
         poison_dataloader = get_dataloader(poison_data, shuffle=False, batch_size=self.batch_size)
 
@@ -60,15 +56,7 @@ class ClusterDefender(Defender):
         if self.visual:
             self.visual_cluster(embeddings, pred_labels)
 
-        # 根据簇内距离得到投毒簇。
         pison_label = self.detect_poison_class(embeddings, pred_labels)
-
-
-        # pred_labels = np.where(cluster_labels==-1, 1, 0)
-        
-        # 使用定量指标评估预测标签结果。（多少是正确的，多少是误判的）FAR、FRR、
-
-        # filtered_dataset = self.filtering(poison_data, true_labels, pred_labels)
 
         auc = 0
 
@@ -120,7 +108,7 @@ class ClusterDefender(Defender):
                    random_state):
         
         logger.info('***** Clustering *****')
-        bgm = BayesianGaussianMixture(n_components=n_components, random_state=random_state)  # 实际簇数可能小于n_components
+        bgm = BayesianGaussianMixture(n_components=n_components, random_state=random_state) 
         pred_labels = bgm.fit_predict(embeddings)
 
         return pred_labels
@@ -135,7 +123,6 @@ class ClusterDefender(Defender):
 
         for true_label in set(y_true):
             
-            # 找到所有等于true label的索引
             groundtruth_samples = np.where(y_true==true_label*np.ones_like(y_true))[0]
             
             drop_scale = 0.5*len(groundtruth_samples)
@@ -178,15 +165,13 @@ class ClusterDefender(Defender):
         compactness = {}
         
         for label in unique_labels:
-            if label == -1:  # 忽略噪声点（如果有）
+            if label == -1:
                 continue
             class_samples = embeddings[labels == label]
             
-            # 计算类内平均距离
             intra_distances = pairwise_distances(class_samples)
             avg_distance = np.mean(intra_distances)
             
-            # 计算类内标准差（可选）
             centroid = np.mean(class_samples, axis=0)
             distances_to_centroid = np.linalg.norm(class_samples - centroid, axis=1)
             std_distance = np.std(distances_to_centroid)
@@ -196,7 +181,6 @@ class ClusterDefender(Defender):
                 'std_distance': std_distance
             }
         print(compactness)
-        # 选择最紧密的类作为中毒候选
         poison_label = min(compactness.items(), key=lambda x: x[1]['avg_intra_distance'])[0]
         return poison_label
 
@@ -232,12 +216,12 @@ class ClusterDefender(Defender):
     def visual_cluster(self, embeddings, pred_labels):
         plt.figure(figsize=(10, 6))
         scatter = plt.scatter(
-            embeddings[:, 0],  # x 轴
-            embeddings[:, 1],  # y 轴
-            c=pred_labels,    # 颜色对应聚类标签
-            cmap='Spectral',   # 颜色映射（适合区分多类别）
-            s=5,              # 点大小
-            alpha=0.8         # 透明度
+            embeddings[:, 0],  
+            embeddings[:, 1], 
+            c=pred_labels,    
+            cmap='Spectral', 
+            s=5,              
+            alpha=0.8     
         )
         plt.colorbar(scatter, label='Cluster Label')
         plt.title('BayesianGaussianMixture Clustering (2D)')

@@ -70,7 +70,7 @@ class GPT2Generator(object):
 
         for context, gdf in zip(contexts, global_dense_features):
             if not isinstance(context, str):
-                context = str(context)  # 将 text 转换为字符串
+                context = str(context)  
             context_ids = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(context))
 
             # NOTE - For model_110, use the older version of the code
@@ -133,71 +133,3 @@ class GPT2Generator(object):
                                    get_scores=get_scores,
                                    interpolation=interpolation,
                                    top_p=top_p)[0][0]
-
-
-class QwenGenerator(object):
-    def __init__(self, model_path):
-        if torch.cuda.is_available():
-            self.device = torch.cuda.current_device()
-        else:
-            self.device = 'cpu'
-
-        self.model_path = model_path
-
-        self.model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype="auto",device_map="auto")
-
-        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
-
-        # 为 pad_token 设置一个单独的标记
-        if self.tokenizer.pad_token is None:
-            self.tokenizer.pad_token = self.tokenizer.eos_token_id + 1  # 或者使用一个模型未占用的标记
-
-        # 使用 tokenizer.pad_token 更新模型配置
-        self.model.config.pad_token_id = self.tokenizer.pad_token_id
-
-    def generate(self, contexts):
-
-        all_output = []
-        for prompt in contexts:
-            if not isinstance(prompt, str):
-                prompt = str(prompt)  # 将text转换为字符串
-
-            messages = [
-                {"role": "system", "content": "你是一名中文语法与句式转换专家，请将输入句子转换为双重否定句，确保没有改变句意且符合语法规范，同时保持表达自然流畅。最后，如果不是肯定句，可以添加一些句子相关的描述，并将其改为否定句。"},  # 系统角色消息
-                {"role": "user", "content": "请将给出的语句改为双重否定句。"+prompt}  # 用户角色消息
-            ]
-
-            # 使用分词器的apply_chat_template方法来格式化消息
-            text = self.tokenizer.apply_chat_template(
-                messages,  # 要格式化的消息
-                tokenize=False,  # 不进行分词
-                add_generation_prompt=True  # 添加生成提示
-            )
-
-            # 将格式化后的文本转换为模型输入，并转换为PyTorch张量，然后移动到指定的设备
-            model_inputs = self.tokenizer([text], return_tensors="pt").to(self.device)
-
-            # 清除past_key_values（模型状态缓存）
-            model_inputs['past_key_values'] = None  # 每次都清空缓存，确保从零开始生成
-
-            # 使用model.generate()方法直接生成文本
-            # 通过设置max_new_tokens参数控制输出的最大长度
-            generated_ids = self.model.generate(
-                model_inputs.input_ids,  # 模型输入的input_ids
-                max_new_tokens=512,  # 最大新生成的token数量
-                attention_mask = model_inputs['attention_mask'],
-                past_key_values = None
-            )
-
-            # 从生成的ID中提取新生成的ID部分
-            generated_ids = [
-                output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
-            ]
-
-            # 使用分词器的batch_decode方法将生成的ID解码回文本，并跳过特殊token
-            response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-            all_output.append(response)
-            # print("prompt:",prompt)
-            # print("response:",response)
-
-        return all_output
