@@ -29,7 +29,6 @@ class MSDefender(Defender):
             md_top_k: Optional[int] = 3,
             md_agg_strat: str = "mean",
             alpha: Optional[float] = 0.9,
-            poison_num: Optional[int] = 200,
             visualize: bool = False, 
             purification: bool = False,
             fig_basepath: str = "./visual_results",
@@ -46,7 +45,6 @@ class MSDefender(Defender):
         self.md_agg_strat = md_agg_strat
         self.md_top_k = md_top_k
         self.alpha = alpha 
-        self.poison_num = poison_num
         self.visualize = visualize
         self.purification = purification
         self.fig_basepath = fig_basepath
@@ -300,7 +298,7 @@ class MSDefender(Defender):
     def detect(self, model: Victim, clean_data: List, poison_data: List):
         model.eval()
 
-        clean_dev_samples = clean_data["dev"][:self.poison_num]
+        clean_dev_samples = clean_data["dev"]
         logger.info(f"Using {len(clean_dev_samples) // 2} to Calibrate...")
         random.seed(2025)
         random.shuffle(clean_dev_samples)

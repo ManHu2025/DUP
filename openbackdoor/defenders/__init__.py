@@ -6,11 +6,9 @@ from .bki_defender import BKIDefender
 from .cube_defender import CUBEDefender
 from .dan_defender import DANDefender
 from .badacts_defender import BadActsDefender
-from .masf_defender import MASFDefender
 from .cluster_defender import ClusterDefender
-from .md_defender import MDDefender
 from .ms_defender import MSDefender
-from .msmlp_defender import MSMLPDefender
+
 
 
 
@@ -23,11 +21,8 @@ DEFENDERS = {
     'cube': CUBEDefender,
     'dan': DANDefender,
     'badacts': BadActsDefender,
-    'masf': MASFDefender,
     'cluster': ClusterDefender,
-    'md': MDDefender,
     'ms': MSDefender,
-    'msmlp':MSMLPDefender
 
 }
 
