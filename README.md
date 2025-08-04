@@ -68,7 +68,7 @@ Supported attacks:
 This module identifies poisoned inputs using Mahalanobis Distance and Spectral Signature scores with adaptive layer selection.
 
 ```bash
-python demo_detection_ablation.py
+python demo_detection.py
 ```
 
 ### Purification Module
